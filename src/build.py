@@ -2,7 +2,7 @@
 import os
 D = os.path.dirname(os.path.abspath(__file__)); R = os.path.dirname(D)
 rd = lambda f: open(os.path.join(D, f), encoding='utf-8').read()
-html = rd('shell_pre.html') + rd('data.js') + rd('fauna2_data.js') + rd('code.js') + rd('shell_post.html')
+html = rd('shell_pre.html') + rd('data.js') + rd('data_roman.js') + rd('fauna2_data.js') + rd('code.js') + rd('shell_post.html')
 extra = ('<link rel="manifest" href="manifest.json">\n<link rel="apple-touch-icon" href="apple-touch-icon.png">\n<link rel="icon" href="icon-192.png">\n'
          '<meta name="apple-mobile-web-app-title" content="IMPERIUM">\n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n<meta name="mobile-web-app-capable" content="yes">\n')
 html = html.replace('<title>', extra + '<title>', 1)

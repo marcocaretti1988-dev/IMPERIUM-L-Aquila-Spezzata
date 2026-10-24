@@ -1289,6 +1289,39 @@ function astar(sx, sy, goalFn, costFn, tx, ty, maxIter) {
 // ---------- sprites ----------
 const ATL = new Image();
 let ATL_OK = false; ATL.onload = () => ATL_OK = true;
+// ---------- sprite romani (src/data_roman.js, generati da src/tools/sprites.py) ----------
+const RATL = new Image(); let RATL_OK = false; RATL.onload = () => { RATL_OK = true; };
+// direzione a 4 vie dall'ultimo movimento: F verso chi guarda, B di spalle, S di lato (verso destra; a sinistra si specchia)
+function romanDir(u) { const sx = u.fsx, sy = u.fsy; if (sx == null) return u.face === 'B' ? 'B' : 'F'; return Math.abs(sx) > Math.abs(sy) * 0.85 ? 'S' : (sy > 0 ? 'F' : 'B'); }
+function romanFrame(u) {
+  const A = RFR[RUNIT[u.k]]; const pick = (k, i) => { const l = A[k]; return l ? l[Math.max(0, Math.min(l.length - 1, i))] : null; };
+  if (u.dead) { const seq = [...(A.hit || []).slice(1), ...(A.death || [])]; return seq[Math.min(seq.length - 1, Math.floor((u.deadT || 0) / 0.11))]; }
+  const dir = romanDir(u);
+  if (u.atkT > 0) { const p = Math.min(0.999, 1 - u.atkT / 0.32);
+    if (dir === 'F' && A.atkF) { const seq = [pick('idleF', 0), A.atkF[0], A.atkF[1]]; return seq[Math.floor(p * 3)]; }
+    return pick('atkS', Math.floor(p * A.atkS.length)); }
+  if (u.moving) { const k = 'walk' + dir; return pick(A[k] ? k : 'walkS', Math.floor(u.phase * 2.6) % 6); }
+  const slow = Math.floor(u.phase * 0.7) % 2; return dir === 'B' ? pick('idleB', 0) : dir === 'S' ? pick('idleS', slow) : pick('idleF', slow);
+}
+function drawRoman(c, sc, u, wx, wy) {
+  const f = romanFrame(u); if (!f) return false; let a = 1;
+  if (u.dead) { a = Math.max(0, 1 - Math.max(0, u.deadT - 5) / 3); if (a <= 0) return true; } else u.phase += (u.moving ? 1 : 0.15) * (1 / 60) * 4;
+  if (!u.dead) {
+    const ring = u.side === 'A' ? (sc.mode === 'raid' ? 'rgba(200,50,40,0.55)' : 'rgba(70,120,230,0.55)') : u.side === 'D' ? (sc.mode === 'raid' ? 'rgba(70,120,230,0.55)' : 'rgba(200,50,40,0.55)') : null;
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(wx, wy, 9, 4.5, 0, 0, 7); c.fill();
+    if (ring) { c.strokeStyle = ring; c.lineWidth = 1.6; c.beginPath(); c.ellipse(wx, wy, 10, 5, 0, 0, 7); c.stroke(); }
+    if (u.hero) { c.strokeStyle = 'rgba(255,215,100,0.8)'; c.lineWidth = 2; c.beginPath(); c.ellipse(wx, wy, 13, 6.5, 0, 0, 7); c.stroke(); } }
+  const s = (u.k === 'uomoarme' ? 0.37 : 0.33) * (u.kid ? 0.66 : 1); const [sx, sy, w, h] = f; const flip = u.fsx != null ? u.fsx < 0 : u.flip;
+  if (u.hitT > 0) c.filter = 'brightness(1.6)'; if (a < 1) c.globalAlpha = a;
+  const pix = c.imageSmoothingEnabled; c.imageSmoothingEnabled = cam.z * DPR * s < 0.9; // pixel art: nitido quando è ingrandito
+  if (flip) { c.save(); c.translate(wx, wy + 1); c.scale(-1, 1); c.drawImage(RATL, sx, sy, w, h, -w * s / 2, -h * s, w * s, h * s); c.restore(); }
+  else c.drawImage(RATL, sx, sy, w, h, wx - w * s / 2, wy + 1 - h * s, w * s, h * s);
+  c.imageSmoothingEnabled = pix; c.globalAlpha = 1; if (u.hitT > 0) c.filter = 'none';
+  if (u.inv > 0) { c.strokeStyle = 'rgba(160,215,255,0.8)'; c.lineWidth = 1.5; c.beginPath(); c.arc(wx, wy - 26, 22, 0, 7); c.stroke(); }
+  return true;
+}
+const RTHUMB = {};
+function romanThumb(k) { if (RTHUMB[k] || !RATL_OK) return RTHUMB[k] || null; const f = RFR[RUNIT[k]].idleF[0]; const cv2 = document.createElement('canvas'); cv2.width = 120; cv2.height = 148; const s = Math.min(140 / f[3], 116 / f[2]); const x2 = cv2.getContext('2d'); x2.drawImage(RATL, f[0], f[1], f[2], f[3], (120 - f[2] * s) / 2, 148 - f[3] * s, f[2] * s, f[3] * s); return RTHUMB[k] = cv2.toDataURL(); }
 function sprDraw(c, key, x, y, sc, flip, alpha) {
   const f = FR[key]; if (!f || !ATL_OK) return 0;
   const [sx, sy, w, h] = f;
@@ -1614,7 +1647,7 @@ function stepTo(sc, u, nx, ny) {
   else if (!blockedFor(sc, u, nx, u.y)) u.x = nx; else if (!blockedFor(sc, u, u.x, ny)) u.y = ny;
   u.x = Math.max(0.3, Math.min(N - 0.3, u.x)); u.y = Math.max(0.3, Math.min(N - 0.3, u.y));
 }
-function setFace(u, dx, dy) { [dx, dy] = rotV(dx, dy); const sx = dx - dy, sy = dx + dy; if (Math.abs(sx) + Math.abs(sy) < 1e-4) return; u.face = sy >= -0.15 ? 'F' : 'B'; u.flip = sx < 0; }
+function setFace(u, dx, dy) { [dx, dy] = rotV(dx, dy); const sx = dx - dy, sy = dx + dy; if (Math.abs(sx) + Math.abs(sy) < 1e-4) return; u.face = sy >= -0.15 ? 'F' : 'B'; u.flip = sx < 0; u.fsx = sx; u.fsy = sy * 2; }
 function dealDamage(sc, t, amt, src, kind) {
   if (t.dead) return;
   if (!t.isB) {
@@ -1999,7 +2032,7 @@ function heroPortrait(k) { if (HPORT[k]) return HPORT[k]; need3d(k); const sp = 
 // si vedono solo quelli con un modello 3D romano (es. il Centurione). La logica (lavoro, caccia, visite) continua uguale.
 const HIDE_FOLK = true;
 const ROMAN3D = new Set(['templare']); // personaggi con modello 3D romano: si vedono sempre
-const folkHidden = (sc, u) => HIDE_FOLK && sc && sc.mode === 'village' && !ROMAN3D.has(u.k);
+const folkHidden = (sc, u) => HIDE_FOLK && sc && sc.mode === 'village' && !ROMAN3D.has(u.k) && !RUNIT[u.k];
 function drawUnit(c, sc, u) { if (folkHidden(sc, u)) { if (u.vis && u.visLead) drawVisitorMark(c, sc, u); return; } drawUnit0(c, sc, u); if (u.vis) drawVisitorMark(c, sc, u); }
 function drawUnit0(c, sc, u) {
   const [wx, wy] = W(u.x, u.y); if (u.k === 'carro') { if (!u.dead) drawCart(c, u, wx, wy); return; }
@@ -2013,6 +2046,7 @@ function drawUnit0(c, sc, u) {
     if (sc.night && !u.dead) { c.shadowColor = 'rgba(255,200,60,0.9)'; c.shadowBlur = 6; }
     c.drawImage(BATL, f[0], f[1], f[2], f[3], -w / 2, -h + 2, w, h); c.restore(); c.filter = 'none'; c.globalAlpha = 1; return; }
   if (u.d.model && drawHero3D(c, sc, u, wx, wy)) return;
+  if (RUNIT[u.k] && RATL_OK && drawRoman(c, sc, u, wx, wy)) return;
   if (u.dead) { const a = Math.max(0, 1 - Math.max(0, u.deadT - 5) / 3); if (a <= 0) return; sprDraw(c, u.k + '.death', wx, wy + 4, uScale(u) * 0.95, u.flip, a * 0.95); return; }
   u.phase += (u.moving ? 1 : 0.15) * (1 / 60) * 4;
   const ring = u.side === 'A' ? (sc.mode === 'raid' ? 'rgba(200,50,40,0.55)' : 'rgba(70,120,230,0.55)') : u.side === 'D' ? (sc.mode === 'raid' ? 'rgba(70,120,230,0.55)' : 'rgba(200,50,40,0.55)') : null;
@@ -2671,7 +2705,7 @@ function folkOf(u) {
   return null;
 }
 const PORT = {};
-function thumbAt(k, h) { if (!PORT[k]) { const f = FR[k + '.idleF']; if (!f || !ATL.complete) return ''; const cv2 = document.createElement('canvas'); cv2.width = 120; cv2.height = 148; const s = Math.min(140 / f[3], 116 / f[2]); const x2 = cv2.getContext('2d'); x2.drawImage(ATL, f[0], f[1], f[2], f[3], (120 - f[2] * s) / 2, 148 - f[3] * s, f[2] * s, f[3] * s); PORT[k] = cv2.toDataURL(); }
+function thumbAt(k, h) { if (!PORT[k] && RUNIT[k] && romanThumb(k)) PORT[k] = romanThumb(k); if (!PORT[k]) { const f = FR[k + '.idleF']; if (!f || !ATL.complete) return ''; const cv2 = document.createElement('canvas'); cv2.width = 120; cv2.height = 148; const s = Math.min(140 / f[3], 116 / f[2]); const x2 = cv2.getContext('2d'); x2.drawImage(ATL, f[0], f[1], f[2], f[3], (120 - f[2] * s) / 2, 148 - f[3] * s, f[2] * s, f[3] * s); PORT[k] = cv2.toDataURL(); }
   return `background-image:url(${PORT[k]});background-size:cover;background-position:center bottom;`; }
 setInterval(() => { if (!S || MODE !== 'village') return; const el = $('#fcard'); if (el && !el.classList.contains('hidden') && SC && SC.folkU && workOn('train', folkOf(SC.folkU).id)) openFolk(SC.folkU); const p = $('#sheet').dataset.p; if (p === 'n' && SC && SC.selN && workOn('nat', natKey(SC.selN))) openNature(SC.selN); else if (p && p.startsWith('b:') && S.works && S.works.some(w => w.key === +p.slice(2))) refreshSheet(); }, 1000);
 function closeFolk() { const el = $('#fcard'); if (el) el.classList.add('hidden'); if (SC) { SC.selU = null; SC.folkU = null; } }
@@ -3195,6 +3229,7 @@ let THUMB_URL = null;
 function thumbStyle(k) {
   if (UDEF[k] && UDEF[k].siege) return `background-image:url(${siegeThumb(k)});background-size:contain;background-repeat:no-repeat;background-position:center bottom;`;
   if (HDEF[k] && HDEF[k].model) { const u = heroPortrait(k); return u ? `background-image:url(${u});background-size:contain;background-repeat:no-repeat;background-position:center bottom;` : ''; }
+  if (RUNIT[k]) { const u = romanThumb(k); if (u) return `background-image:url(${u});background-size:contain;background-repeat:no-repeat;background-position:center bottom;`; }
   const f = FR[k + '.idleF']; if (!f) return '';
   const s = 54 / f[3];
   return `background-image:url(${ATL.src});background-size:${ATLW * s}px ${ATLH * s}px;background-position:${-f[0] * s + (54 - f[2] * s) / 2}px ${-f[1] * s}px;`;
@@ -4073,7 +4108,7 @@ window.addEventListener('pagehide', () => { if (S) { save(); cloudPush(true); } 
 setInterval(() => { if (CLOUD.pend && S) cloudPush(true); }, 21000);
 cloudInit(); try { if (!window.claude && navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }
 applyTheme(); resize(); treeSprites(); updateSndBtn(); buildFaunaSprites();
-g3init(); ATL.src = ATLAS_SRC; BATL.src = BATLAS_SRC; EATL.src = EATLAS_SRC;
+g3init(); ATL.src = ATLAS_SRC; RATL.src = RATLAS_SRC; BATL.src = BATLAS_SRC; EATL.src = EATLAS_SRC;
 // title backdrop: show an enemy-ish village behind title
 function titleScene() { const tg = { d: 7, seed: 777, name: '', where: '' }; SC = genEnemy(tg); SC.U = []; SC.mode = 'title'; centerCam(MCX, MCX); cam.z = Math.max(0.7, Math.min(1.2, VW / 1000)); cam.y += VH * 0.3 / cam.z; }
 titleScene();
