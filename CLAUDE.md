@@ -1,7 +1,7 @@
 # IMPERIUM – L'Aquila Spezzata (progetto unico)
 
 Gioco gemello di FEUDUM, ambientato nell'antica Roma (Pannonia, 193 d.C.). Nato come copia di FEUDUM il 24/10/2026: da quel giorno i due giochi vanno ognuno per conto suo (nessuna sincronizzazione automatica).
-Questo repository è L'UNICA fonte del gioco. Pubblicato con GitHub Pages.
+Questo repository è L'UNICA fonte del gioco. Pubblicato con GitHub Pages: https://marcocaretti1988-dev.github.io/IMPERIUM-L-Aquila-Spezzata/
 
 - Sorgenti: `src/` → `shell_pre.html` (HTML+CSS), `data.js` (atlanti sprite/texture), `fauna2_data.js`, `code.js` (tutto il gioco), `shell_post.html`.
 - NON modificare a mano `index.html` in radice: si genera con `python3 src/build.py`.
