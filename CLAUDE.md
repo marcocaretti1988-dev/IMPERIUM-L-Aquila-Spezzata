@@ -7,9 +7,10 @@ Questo repository è L'UNICA fonte del gioco. Pubblicato con GitHub Pages: https
 - NON modificare a mano `index.html` in radice: si genera con `python3 src/build.py`.
 - Le chiavi interne restano quelle di FEUDUM (es. edificio `mastio` = Castrum, `taverna` = Taberna, eroe `isolde` = Domina Livia): cambiano solo i testi mostrati.
 - Salvataggi: chiavi `imperium_*` (separate da FEUDUM, che sta sullo stesso dominio github.io). Codice di esportazione `IMPERIUM1:`.
-- Modelli 3D: file `m3d_<nome>.js` in radice. Nuovi modelli Meshy: `python3 src/tools/glb2m3d.py file.glb <nome> m3d_<nome>.js 30000`, poi aggiungere `<nome>` a `M3D_FILES` in `src/code.js` (per sostituire un modello medievale basta rigenerare lo stesso `<nome>`).
+- Modelli 3D: file `m3d_<nome>.js` in radice. Nuovi modelli Meshy: `python3 src/tools/glb2m3d.py file.glb <nome> m3d_<nome>.js 30000`, poi aggiungere `<nome>` a `M3D_FILES` in `src/code.js`. Per modelli pieni di archi o dettagli sottili (es. l'Anfiteatro) aggiungere `--qem` in fondo: riduzione a quadriche (src/tools/qem.py), più lenta (3-4 minuti) ma non buca pilastri e pareti (per sostituire un modello medievale basta rigenerare lo stesso `<nome>`).
 - Edifici romani provvisori (fatti a mano, in attesa di quelli Meshy): `python3 src/tools/roman3d/edifici.py [nome ...] [--preview cartella]` rigenera `m3d_<nome>.js` dal codice in `src/tools/roman3d/` (kit.py = geometria, texture e anteprima isometrica; edifici.py/altri.py = un edificio per funzione). Quartier generale: `castrum` (legno, livelli 1-4) e `castello` (Castellum di pietra, dal 5), scelti da `m3k()` in `code.js`. Un modello Meshy con lo stesso `<nome>` sostituisce quello fatto a mano.
-- Villaggio iniziale (vicus romano): `initialBuildings()` in `src/code.js`.
+- Villaggio iniziale: `initialBuildings()` in `src/code.js` — Anfiteatro (`anfiteatro`, 6x6, modello Meshy del Colosseo) al centro della mappa, Castrum dietro. Le partite salvate senza Anfiteatro lo ricevono al primo spazio libero vicino al centro (`beginGame`).
+- Centurione: modello Meshy `m3d_templare.js` = eroe Cassio Longino (chiave `templare`); nel villaggio sta sempre di guardia davanti alla porta del Castrum.
 - Illustrazioni della storia: `ui/story_1..7.webp` (1-5 prologo, 6 cronache, 7 capitoli III-IV). Se mancano compare l'emoji segnaposto.
 - Musica: `feudum.mp3` (villaggio), `raid.mp3` (razzie) — per ora le stesse di FEUDUM.
 - `build.py` scrive anche `version.txt`: il gioco online si ricarica da solo quando esce una versione nuova.

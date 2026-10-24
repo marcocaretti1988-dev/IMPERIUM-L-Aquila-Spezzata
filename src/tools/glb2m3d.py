@@ -42,9 +42,23 @@ def cluster(P, N, UV, T, G, uvb):
     used = np.unique(t); remap = -np.ones(n, np.int64); remap[used] = np.arange(len(used))
     return Pc[used], Nc[used], UVc[used], remap[t]
 
-def main(src, name, out, target_tris=16000, texsize=1024):
+def main(src, name, out, target_tris=16000, texsize=1024, use_qem=False):
     P, N, UV, T, tex = load(src)
     print(name, 'in', len(P), 'verts', len(T), 'tris')
+    if use_qem:
+        # 1) raggruppamento fine (celle più piccole dei triangoli) fino a ~350mila triangoli, 2) quadriche
+        import qem
+        Pc, Nc, UVc, Tc = cluster(P, N, UV, T, 420, 64) if len(T) > 450000 else (P, N, UV, T)
+        print(name, 'pre', len(Tc), 'tris')
+        Pw, Fw, CUV = qem.weld(Pc, Tc, UVc)
+        Ps, Fs, CUVs = qem.simplify(Pw, Fw, CUV, target_tris)
+        for uvq in (2048, 1024, 512, 256, 128):
+            Pc, Nc, UVc, Tc = qem.unweld(Ps, Fs, CUVs, uvq)
+            if len(Pc) <= 65000: break
+        while len(Pc) > 65000:
+            target_tris = int(target_tris * 0.9); print('  troppi vertici, riprovo con', target_tris)
+            Ps, Fs, CUVs = qem.simplify(Ps, Fs, CUVs, target_tris); Pc, Nc, UVc, Tc = qem.unweld(Ps, Fs, CUVs, 256)
+        return write(name, out, Pc, Nc, UVc, Tc, tex, texsize)
     lo, hi, best = 12, 200, None
     for _ in range(12):
         G = (lo + hi) // 2
@@ -53,6 +67,9 @@ def main(src, name, out, target_tris=16000, texsize=1024):
         else: best = r; lo = G + 1
         if lo > hi: break
     Pc, Nc, UVc, Tc = best
+    return write(name, out, Pc, Nc, UVc, Tc, tex, texsize)
+
+def write(name, out, Pc, Nc, UVc, Tc, tex, texsize):
     print(name, 'out', len(Pc), 'verts', len(Tc), 'tris')
     mn = Pc.min(0); size = np.maximum(1e-6, Pc.max(0) - mn)
     pos = np.round((Pc - mn) / size * 65535).astype(np.uint16)
@@ -66,4 +83,7 @@ def main(src, name, out, target_tris=16000, texsize=1024):
     open(out, 'w').write(js); print(name, 'KB', len(js) // 1024)
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 16000)
+    # uso: glb2m3d.py file.glb nome m3d_nome.js [triangoli] [--qem]   (--qem: riduzione fedele per modelli pieni di archi e dettagli sottili)
+    a = [x for x in sys.argv[1:] if not x.startswith('--')]
+    sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+    main(a[0], a[1], a[2], int(a[3]) if len(a) > 3 else 16000, use_qem='--qem' in sys.argv)

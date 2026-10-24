@@ -135,7 +135,7 @@ function g3init() {
   return true;
 }
 // ---- caricamento a pezzi dei modelli 3D: si scarica solo ciò che serve, il resto con calma ----
-const M3D_FILES = new Set(["catapulta3d", "ariete3d", "insegna", "lampione", "pozzogrande", "staccionata", "steccato", "cavallofrisia", "cassa", "anfora", "cassafieno", "botte", "cassaortaggi", "fontanella", "stenditoio", "mucchiosassi", "felce", "segnavia", "gonfalone", "rovinamuro", "arco", "colonna", "rovine", "lastricato", "muretto", "rastrelliera", "carriola", "pozzo", "carretto", "croce", "lanterna", "abete3d", "accademia", "armeria", "balista", "balista_b", "balista_c", "bottino", "cancello", "capanno", "casa", "caserma", "castello", "cava", "chiesa", "falo", "fattoria", "fucina", "generale", "granaio", "infermeria", "mercato", "miniera", "monastero", "municipio", "mura", "olmo3d", "palizzata", "poligono", "quercia3d", "spoglio3d", "taverna", "tenda", "tesoreria", "torre", "torrepietra", "tronco3d", "cripta", "castrum", "capanna", "scuderia"]);
+const M3D_FILES = new Set(["catapulta3d", "ariete3d", "insegna", "lampione", "pozzogrande", "staccionata", "steccato", "cavallofrisia", "cassa", "anfora", "cassafieno", "botte", "cassaortaggi", "fontanella", "stenditoio", "mucchiosassi", "felce", "segnavia", "gonfalone", "rovinamuro", "arco", "colonna", "rovine", "lastricato", "muretto", "rastrelliera", "carriola", "pozzo", "carretto", "croce", "lanterna", "abete3d", "accademia", "armeria", "balista", "balista_b", "balista_c", "bottino", "cancello", "capanno", "casa", "caserma", "castello", "cava", "chiesa", "falo", "fattoria", "fucina", "generale", "granaio", "infermeria", "mercato", "miniera", "monastero", "municipio", "mura", "olmo3d", "palizzata", "poligono", "quercia3d", "spoglio3d", "taverna", "tenda", "tesoreria", "torre", "torrepietra", "tronco3d", "cripta", "castrum", "capanna", "scuderia", "anfiteatro", "templare"]);
 const M3D_ALIAS = { mastio: 'castello', tronco: 'tronco3d' };
 // il quartier generale è un Castrum di legno fino al livello 4, poi un Castellum di pietra
 const m3k = b => b.t === 'mastio' ? ((b.lvl || (S && S.mastio) || 1) >= 5 ? 'castello' : 'castrum') : b.t;
@@ -1018,6 +1018,7 @@ const BDEF = {
   cripta: { n: 'Sepolcreto degli Eroi', w: 2, h: 2, hp: 900, cost: { pietra: 160, oro: 90, legno: 40 }, desc: 'Lungo la via riposano i veterani caduti, col loro nome inciso sulla stele. Ogni eroe custodito dà +1% vita a tutte le truppe (massimo +15%).', max: [0, 0, 1, 1, 1, 1, 1, 1], icon: '⚱️', t: 14, spr: 'chiesa' },
   chiesa: { n: 'Tempio di Giove', w: 2, h: 2, hp: 700, cost: { pietra: 200, legno: 120, oro: 100 }, req: 'municipio', desc: 'Colonne, frontone e altare dei sacrifici. Morale: +10% vita a tutte le truppe. Il Valetudinarium cura il 20% in più e di notte cura i difensori vicini.', max: [0, 0, 1, 1, 1, 1, 1, 1], icon: '⛪', t: 14, spr: 'chiesa' },
   accademia: { n: 'Biblioteca', w: 3, h: 3, hp: 800, cost: { legno: 300, pietra: 200, oro: 250 }, req: 'municipio', desc: 'Rotoli, mappe e scuola di guerra: ricerche permanenti su armature, balistica e logistica.', max: [0, 0, 0, 1, 1, 1, 1, 1], icon: '📚', t: 18, spr: 'accademia' },
+  anfiteatro: { n: 'Anfiteatro', w: 6, h: 6, hp: 3000, cost: { pietra: 600, oro: 400, legno: 200 }, prod: ['oro', 25], desc: 'Il grande anfiteatro di pietra, cuore della città: giochi, gladiatori e venationes richiamano folle da tutta la Provincia. +25 Oro/min dai biglietti e dai mercanti.', max: [1, 1, 1, 1, 1, 1, 1, 1], icon: '🏟️', t: 30 },
   cancello: { n: 'Mura con Porta', w: 2, h: 2, hp: 1000, cost: { pietra: 150, legno: 80, ferro: 30 }, gate: true, desc: 'Torri merlate, saracinesca e porta ferrata. 1000 vita, i nemici devono abbatterla, le tue truppe passano. Ospita 2 arcieri.', max: [0, 0, 1, 1, 2, 2, 3, 4], icon: '🏯', t: 12, shoot: { range: 6, dmg: 8, cd: 0.8, type: 'arrow' }, spr: 'cancello' },
   // decorazioni / ostacoli naturali (acquistabili e rimovibili)
   funghi: { n: 'Funghi del Bosco', w: 1, h: 1, hp: 60, cost: { oro: 40 }, desc: 'Ovoli rossi tra l\'erba e i fiori. Belli da vedere, da non mangiare.', max: [3, 4, 5, 6, 7, 8, 9, 10], icon: '🍄', t: 4, decor: true, spr: 'funghi', rm: { cost: { cibo: 5 }, t: 3, gain: { cibo: 40 } } },
@@ -1070,7 +1071,7 @@ const BDEF = {
   fontana: { n: 'Fontana di Pietra', w: 2, h: 2, hp: 400, cost: { pietra: 120, oro: 80 }, desc: 'Una vasca ottagonale con lo zampillo. Il cuore della piazza.', max: [0, 0, 1, 1, 2, 2, 2, 3], icon: '⛲', t: 10, decor: true, pr: 8 },
   statua: { n: 'Statua dell\'Imperatore', w: 1, h: 1, hp: 500, cost: { pietra: 150, oro: 150 }, desc: 'Il divo Marco Aurelio, in bronzo, con il braccio alzato.', max: [0, 0, 0, 0, 1, 1, 2, 2], icon: '🗽', t: 12, decor: true, pr: 12 },
 };
-const BUILD_ORDER = ['municipio', 'casa', 'taverna', 'mercato', 'fattoria', 'capanna', 'granaio', 'fucina', 'infermeria', 'armeria', 'miniera', 'cava', 'tesoreria', 'caserma', 'poligono', 'scuderia', 'monastero', 'chiesa', 'accademia', 'cripta', 'torre', 'torrepietra', 'cancello', 'balista', 'muro', 'fossato'];
+const BUILD_ORDER = ['municipio', 'casa', 'taverna', 'mercato', 'fattoria', 'capanna', 'granaio', 'fucina', 'infermeria', 'armeria', 'miniera', 'cava', 'tesoreria', 'caserma', 'poligono', 'scuderia', 'monastero', 'chiesa', 'accademia', 'cripta', 'anfiteatro', 'torre', 'torrepietra', 'cancello', 'balista', 'muro', 'fossato'];
 const DECOR_ORDER = ['pozzogrande', 'pozzo', 'insegna', 'fontana', 'fontanella', 'statua', 'lastricato', 'lanterna', 'gonfalone', 'stendardo', 'aiuola', 'siepe', 'cespuglio', 'felce', 'staccionata', 'steccato', 'muretto', 'cavallofrisia', 'bancarella', 'carretto', 'carriola', 'rastrelliera', 'cassa', 'cassafieno', 'cassaortaggi', 'botte', 'anfora', 'panni', 'stenditoio', 'pagliaio', 'catasta', 'recinto', 'alveari', 'spaventapasseri', 'segnavia', 'croce', 'gogna', 'arco', 'colonna', 'rovinamuro', 'rovine', 'mucchiosassi', 'funghi', 'masso', 'tronco'];
 // dimensione dei modelli delle decorazioni: w = larghezza in caselle, h = altezza in caselle
 const DFIT = { pozzogrande: { w: 1.5 }, insegna: { h: 1.5 }, staccionata: { w: 1 }, steccato: { w: 0.95 }, cavallofrisia: { w: 0.85 }, cassa: { w: 0.5 }, cassafieno: { w: 0.55 }, cassaortaggi: { w: 0.55 }, botte: { h: 0.5 }, anfora: { h: 0.45 }, pozzo: { w: 0.85 }, fontanella: { h: 0.8 }, carretto: { w: 0.95 }, carriola: { w: 0.9 }, stenditoio: { w: 0.95 }, rastrelliera: { w: 1 }, mucchiosassi: { w: 0.55 }, felce: { w: 0.7 }, croce: { h: 0.85 }, segnavia: { h: 1.05 }, gonfalone: { h: 1.2 }, lanterna: { h: 1.2 }, rovinamuro: { w: 1 }, arco: { h: 1.25 }, colonna: { h: 1.3 }, rovine: { w: 1.9 }, lastricato: { w: 1.02 }, muretto: { w: 1 } };
@@ -1162,7 +1163,7 @@ const HDEF = {
   isolde: { n: 'Domina Livia', title: 'Signora di Savaria', hp: 420, dmg: 22, cd: 0.9, rng: 7, spd: 1.1, lv: 2, ranged: 'arrow', ult: 'Pioggia di Frecce', ultd: 'Raffica di frecce su un\'area: danni pesanti e rallenta i nemici del 40%.' },
   tomas: { n: 'Asclepiade', title: 'Il Medico Greco', hp: 650, dmg: 18, cd: 1.0, rng: 1.0, spd: 1.0, lv: 4, ult: 'Balsamo di Asclepio', ultd: 'Cura completa degli alleati vicini e rialza il 30% dei caduti. Aura: cura lenta.', aura: true },
   generale: { n: 'Tito Aurelio Ferox', title: 'Legato, il Portatore dell\'Aquila', hp: 1100, dmg: 34, cd: 1.0, rng: 1.0, spd: 0.95, lv: 5, armor: 0.35, model: 1, ult: 'Sacramentum', ultd: 'Alza l\'aquila: per 8 secondi le truppe vicine fanno +40% danno e si muovono più in fretta. Aura: +10% danno alle truppe attorno a lui.' },
-  templare: { n: 'Cassio Longino', title: 'Primipilo, Difensore del Limes', hp: 950, dmg: 40, cd: 1.0, rng: 1.0, spd: 1.0, lv: 6, armor: 0.3, ult: 'Testudo', ultd: 'Lui e gli alleati vicini serrano gli scudi a testuggine: invulnerabili per 6 secondi, attirano i nemici.' },
+  templare: { n: 'Cassio Longino', title: 'Primipilo, Difensore del Limes', hp: 950, dmg: 40, cd: 1.0, rng: 1.0, spd: 1.0, lv: 6, armor: 0.3, model: 1, ult: 'Testudo', ultd: 'Lui e gli alleati vicini serrano gli scudi a testuggine: invulnerabili per 6 secondi, attirano i nemici.' },
 };
 const ENEMY_UNITS = ['miliziano', 'arccorto', 'scudata', 'picchiere', 'balestriere', 'uomoarme', 'berserker'];
 const MASTIO_UP = [null,
@@ -1915,7 +1916,7 @@ function plotCache(w, h) { return cached(`plot${w}x${h}${TEX_OK ? "t" : ""}`, w,
   const o0 = isoP(-m, -m), ex = isoP(1, 0), ey = isoP(0, 1), oz = isoP(0, 0);
   c.save(); c.transform((ex[0] - oz[0]) / T, (ex[1] - oz[1]) / T, (ey[0] - oz[0]) / T, (ey[1] - oz[1]) / T, o0[0], o0[1]); c.drawImage(tv, 0, 0); c.restore();
 }); }
-const H3FREE = { cripta: 1, torrepietra: 1, torre: 1, mura: 1, palizzata: 1, cancello: 1, balista: 1 };
+const H3FREE = { anfiteatro: 1, cripta: 1, torrepietra: 1, torre: 1, mura: 1, palizzata: 1, cancello: 1, balista: 1 };
 function drawBuilding(c, sc, b) {
   const vr0 = vRect(b); const [wx, wy] = WR(vr0[0], vr0[1]);
   if (b.hitT > 0) { c.save(); c.translate((Math.random() - .5) * 2, 0); }
@@ -2030,12 +2031,12 @@ let placing = null; // {t, x, y, w, h, move: bref}
 
 // ---------- initial state ----------
 function initialBuildings() {
-  // vicus romano: il Castrum al centro, la caserma accanto, l'horreum dietro; dalla porta parte la via con le Domus ai lati,
-  // il pozzo e il miliario in fondo; la villa rustica tra i campi, la falegnameria verso il bosco, le torri di guardia agli estremi
-  const L = [['mastio', 14, 14], ['caserma', 9, 14], ['granaio', 14, 10], ['fattoria', 21, 9], ['capanna', 8, 19],
-    ['casa', 17, 20], ['casa', 20, 17], ['stendardo', 17, 19], ['stendardo', 19, 17], ['lanterna', 17, 16], ['lanterna', 16, 17],
-    ['pozzo', 22, 20], ['segnavia', 23, 23], ['anfora', 19, 21], ['anfora', 22, 18], ['carretto', 16, 11], ['cassafieno', 20, 12], ['cassafieno', 24, 12],
-    ['botte', 10, 19], ['botte', 10, 21], ['aiuola', 16, 22], ['aiuola', 22, 16], ['aiuola', 19, 22], ['torre', 8, 10], ['torre', 24, 14]];
+  // città romana: l'Anfiteatro al centro della mappa, il Castrum dietro con la porta verso l'arena, caserma e horreum ai lati;
+  // davanti all'arena la via con le Domus, il pozzo e il miliario; la villa rustica tra i campi, la falegnameria verso il bosco
+  const L = [['anfiteatro', 13, 13], ['mastio', 7, 7], ['caserma', 3, 10], ['granaio', 11, 5], ['fattoria', 17, 5], ['capanna', 8, 20],
+    ['casa', 15, 22], ['casa', 22, 15], ['stendardo', 11, 9], ['stendardo', 9, 11], ['lanterna', 22, 19], ['lanterna', 19, 22],
+    ['pozzo', 20, 20], ['segnavia', 24, 24], ['anfora', 17, 23], ['anfora', 24, 15], ['carretto', 13, 6], ['cassafieno', 16, 8], ['cassafieno', 20, 8],
+    ['botte', 10, 20], ['botte', 10, 22], ['aiuola', 18, 22], ['aiuola', 22, 18], ['aiuola', 21, 23], ['torre', 5, 5], ['torre', 25, 19]];
   return L.map(([t, x, y]) => ({ id: S.nextId++, t, x: x + OFF, y: y + OFF, lvl: 1, stock: 0, end: 0 }));
 }
 function startNew() { S = newState(); S.buildings = initialBuildings(); save(); }
@@ -2083,6 +2084,7 @@ function buildVillage() {
   if (S && S.hunts && S.fauna) for (const id of S.hunts) { const a = S.fauna.find(f => f.id === id && f.dying == null); if (a) { a.huntBy = 1; hunterSpawn(sc, a); } }
   if (S && !S.creative) { spawnKids(sc); if (S.fest && now() < S.fest.end) setTimeout(festFX, 0); }
   if (S && S.mastio >= HDEF.generale.lv && !S.sandbox) { const m = sc.B.find(b => b.t === 'mastio'); if (m) { const [fx, fy] = frontTile(sc, m); const u = mkUnit('generale', 'V', fx + 1.2, fy + 0.6, true); u.face = 'F'; u.flip = true; u.ai = soldierAI; sc.U.push(u); } }
+  if (S && !S.sandbox) { const m = sc.B.find(b => b.t === 'mastio'); if (m) { const u = mkUnit('templare', 'V', m.x + m.w + 0.15, m.y + m.h + 0.75, true); u.face = 'F'; u.flip = false; u.ai = soldierAI; sc.U.push(u); } }
   return sc;
 }
 function villageSetup(sc) {
@@ -4022,6 +4024,7 @@ function beginGame(fresh, preset) {
   if (!S.natBig) { S.natBig = 1; spawnNature(12); }
   if (!S.natHuge) { S.natHuge = 1; spawnNature(45); }
   for (const r of RES) if (S.res[r] == null) S.res[r] = 0; if (S.mq == null) S.mq = 0; if (S.best3 == null) S.best3 = 0;
+  if (!S.sandbox && !S.buildings.some(b => b.t === 'anfiteatro')) { const c0 = (MCX | 0) - 2; const f = canPlace('anfiteatro', c0, c0) ? [c0, c0] : findFree('anfiteatro', c0, c0); if (f) { S.buildings.push({ id: S.nextId++, t: 'anfiteatro', x: f[0], y: f[1], lvl: 1, stock: 0, end: 0 }); if (!fresh) setTimeout(() => toast('🏟️ Il Senato ti dona un Anfiteatro per la città!'), 1500); } }
   if (!S.creative && !S.buildings.some(b => b.t === 'casa')) { let n = 0; for (let rr = 4; rr < 12 && n < 2; rr++) for (let y = (MCX | 0) - rr; y <= (MCX | 0) + rr && n < 2; y++) for (let x = (MCX | 0) - rr; x <= (MCX | 0) + rr && n < 2; x++) if (canPlace('casa', x, y)) { S.buildings.push({ id: S.nextId++, t: 'casa', x, y, lvl: 1, stock: 0, end: 0 }); n++; } if (n) setTimeout(() => toast('🏠 Il presidio cresce: 2 Domus regalate ai tuoi coloni'), 1200); }
   refreshTargets(false);
   questMigrate(); MODE = 'village'; SC = buildVillage(); prefetchEra(); centerCam(MCX, MCX); cam.z = VW < 600 ? 1.05 : Math.max(0.7, Math.min(1.25, VW / 900));
