@@ -675,3 +675,80 @@ def croce():
     m.amphora(0.27, 0.2, 0.06, 0.16)
     return m
 BUILDERS2['croce'] = croce
+
+# ============================================================ ANFITEATRO (il Colosseo com'era in epoca romana)
+def anfiteatro():
+    m = Mesh(); A, B = 2.9, 2.42          # semiassi esterni (x, z)
+    NS = 80                                # 80 arcate per piano, come l'originale
+    L = [0.0, 0.52, 1.02, 1.52]; TOP = 1.96   # quote dei tre ordini e dell'attico
+    ell = lambda s, i: (A * s * math.cos(2 * math.pi * i / NS), B * s * math.sin(2 * math.pi * i / NS))
+    def ring_wall(s, y0, y1, mat, out=True, rep=None, every=None):
+        for i in range(NS):
+            (x0, z0), (x1, z1) = ell(s, i), ell(s, i + 1)
+            mm = mat(i) if callable(mat) else mat
+            o = ((x0 + x1) / 2 * (9 if out else 0), (y0 + y1) / 2, (z0 + z1) / 2 * (9 if out else 0))
+            m.quad((x0, y0, z0), (x1, y0, z1), (x1, y1, z1), (x0, y1, z0), mm, out=o, rep=rep, flip_u=not out)
+    def ring_flat(s0, s1, y, mat, y1=None, segs=None):
+        y1 = y if y1 is None else y1
+        for i in range(NS):
+            if segs and not segs(i): continue
+            (a0, b0), (a1, b1) = ell(s0, i), ell(s0, i + 1); (c0, d0), (c1, d1) = ell(s1, i), ell(s1, i + 1)
+            m.quad((a0, y, b0), (a1, y, b1), (c1, y1, d1), (c0, y1, d0), mat, out=((a0 + c0) / 2, max(y, y1) + 9, (b0 + d0) / 2))
+    # basamento a gradini di travertino tutto intorno
+    ring_flat(1.12, 1.0, 0.0, 'paving', 0.02); ring_wall(1.0, 0.0, 0.03, 'trav')
+    # tre ordini di arcate (tuscanico, ionico, corinzio) e l'attico con le finestrelle
+    for k, mat in enumerate(('arc1', 'arc2', 'arc3')):
+        ring_wall(1.0, L[k] + 0.03 * (k == 0), L[k + 1], mat)
+        # cornicione sporgente sopra ogni ordine
+        ring_wall(1.025, L[k + 1] - 0.03, L[k + 1], 'trav'); ring_flat(1.025, 1.0, L[k + 1], 'trav')
+    ring_wall(1.0, L[3], TOP, lambda i: 'attic_w' if i % 2 == 0 else 'attic_p')
+    ring_wall(1.02, TOP - 0.04, TOP, 'trav')
+    # spessore del muro in cima e parete interna dell'attico
+    ring_flat(1.02, 0.95, TOP, 'trav'); ring_wall(0.95, TOP - 0.34, TOP, 'trav', out=False)
+    # antenne del velario sull'attico
+    for i in range(0, NS, 4):
+        x, z = ell(1.0, i + 0.5); m.box(x - 0.012, TOP - 0.1, z - 0.012, x + 0.012, TOP + 0.2, z + 0.012, 'wood_d')
+    # cavea: gradinate dalla cima fino al podio, con le praecinctiones e i vomitoria
+    SA, SB = 1.32 / A, 0.8 / B           # arena 1.32 x 0.80 (semiassi)
+    s_top, y_top = 0.95, TOP - 0.34; s_pod, y_pod = 0.5, 0.16
+    steps = 16
+    for j in range(steps):
+        t0, t1 = j / steps, (j + 1) / steps
+        sa = s_top + (s_pod - s_top) * t0; sb = s_top + (s_pod - s_top) * t1
+        ya = y_top + (y_pod - y_top) * t0; yb = y_top + (y_pod - y_top) * t1
+        ring_flat(sa, sb, ya, 'seats')                    # pedata
+        rise = 'stone_d' if j in (5, 10) else 'trav'      # muri dei settori (praecinctio)
+        for i in range(NS):
+            (x0, z0), (x1, z1) = ell(sb, i), ell(sb, i + 1)
+            mat = 'dark' if (j in (2, 7, 12) and i % 8 == 3) else rise
+            m.quad((x0, yb, z0), (x1, yb, z1), (x1, ya, z1), (x0, ya, z0), mat, out=(0, ya, 0))
+        if j in (5, 10):   # un gradino in più alto: corridoio di distribuzione
+            pass
+    # podio con la balaustra di marmo e i dipinti, poi l'arena di sabbia
+    ring_flat(s_pod, s_pod * 0.97, y_pod, 'marble')
+    for i in range(NS):
+        (x0, z0), (x1, z1) = ell(s_pod * 0.97, i), ell(s_pod * 0.97, i + 1)
+        m.quad((x0, 0.02, z0), (x1, 0.02, z1), (x1, y_pod, z1), (x0, y_pod, z0), 'fresco', out=(0, 0.1, 0), rep=(1.0, y_pod - 0.02))
+    # l'arena ellittica (semiassi 1.32 x 0.80, come s_pod*0.97)
+    for i in range(NS):
+        (x0, z0), (x1, z1) = ell(s_pod * 0.97, i), ell(s_pod * 0.97, i + 1)
+        m.tri((0, 0.02, 0), (x0, 0.02, z0), (x1, 0.02, z1), 'sand', out=(0, 9, 0), uvs=((0.5, 0.5), (0.5 + x0 / 4, 0.5 + z0 / 4), (0.5 + x1 / 4, 0.5 + z1 / 4)))
+    # palco imperiale (pulvinar) sul lato lungo davanti, con il drappo di porpora
+    m.box(-0.22, y_pod, s_pod * B - 0.02, 0.22, y_pod + 0.14, s_pod * B + 0.14, 'marble', sides={'f': 'marble', 'b': 'purple'})
+    m.quad((-0.2, y_pod + 0.02, s_pod * B - 0.025), (0.2, y_pod + 0.02, s_pod * B - 0.025), (0.2, y_pod + 0.13, s_pod * B - 0.025), (-0.2, y_pod + 0.13, s_pod * B - 0.025), 'purple', out=(0, 0.2, -9))
+    # porte trionfali sull'asse lungo: due grandi archi scuri nel podio
+    for sx in (-1, 1):
+        x = sx * s_pod * 0.97 * A; m.door(x, 0.02, 0, 0.26, 0.13, 'r' if sx < 0 else 'l', 'dark')
+    # il velario: teli a strisce tesi sulla metà posteriore, dalle antenne verso l'arena
+    for i in range(NS):
+        a = 2 * math.pi * (i + 0.5) / NS
+        if math.sin(a) > -0.15: continue
+        (x0, z0), (x1, z1) = ell(0.99, i), ell(0.99, i + 1); (c0, d0), (c1, d1) = ell(0.66, i), ell(0.66, i + 1)
+        m.quad((c0, TOP - 0.12, d0), (c1, TOP - 0.12, d1), (x1, TOP + 0.16, z1), (x0, TOP + 0.16, z0), 'red' if i % 5 == 0 else 'cloth', out=(0, TOP + 9, 0))
+    # gladiatori e una belva nell'arena, la meta al centro
+    m.cyl(0, 0, 0.03, 0.02, 0.24, 'stone_d', 6); m.cone(0, 0, 0.04, 0.24, 0.32, 'gold', 6)
+    for (x, z, c) in ((-0.42, 0.1, 'red'), (-0.3, 0.16, 'bronze'), (0.45, -0.12, 'leather')):
+        m.cyl(x, z, 0.022, 0.02, 0.1, c, 6); m.cyl(x, z, 0.018, 0.1, 0.13, 'terra', 6)
+    return m
+
+BUILDERS2['anfiteatro'] = anfiteatro

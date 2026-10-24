@@ -207,6 +207,54 @@ def m_shop(seed):
 
 def m_hay(seed): return m_thatch(seed + 30) * np.array([1.06, 1.04, 0.8])
 
+
+# ---- arcate dell'anfiteatro: una campata per cella, con semicolonne sui bordi che si uniscono alla campata vicina
+TRAV = (204, 188, 156)
+def m_arcade(seed, order=0, statue=False):
+    a = m_ashlar(TRAV, seed, 32, 16, (170, 154, 124)); im = Image.fromarray(clip(a)); d = ImageDraw.Draw(im)
+    W = CELL; top = 22; bot = CELL - (6 if order == 0 else 18)
+    # trabeazione e (dai piani alti) zoccolo con balaustra
+    d.rectangle([0, 0, W, top - 6], fill=(214, 200, 170)); d.rectangle([0, top - 6, W, top - 2], fill=(150, 134, 104)); d.rectangle([0, 3, W, 5], fill=(176, 160, 128))
+    if order: d.rectangle([0, bot, W, CELL], fill=(196, 180, 148)); d.rectangle([0, bot, W, bot + 3], fill=(150, 134, 104))
+    # vano dell'arco: buio con un accenno di volta
+    ax0, ax1 = 30, 98; ay = 56; r = (ax1 - ax0) // 2
+    d.rectangle([ax0, ay, ax1, bot], fill=(44, 34, 26)); d.pieslice([ax0, ay - r, ax1, ay + r], 180, 360, fill=(44, 34, 26))
+    d.arc([ax0 - 4, ay - r - 4, ax1 + 4, ay + r + 4], 180, 360, fill=(160, 144, 114), width=5)
+    d.rectangle([ax0 + 6, ay + 4, ax1 - 6, ay + 14], fill=(62, 50, 40))
+    if statue:
+        cx = (ax0 + ax1) // 2; d.ellipse([cx - 5, ay - 12, cx + 5, ay - 2], fill=(226, 220, 204)); d.polygon([(cx - 9, ay), (cx + 9, ay), (cx + 7, bot - 4), (cx - 7, bot - 4)], fill=(222, 214, 196))
+        d.rectangle([cx - 11, bot - 6, cx + 11, bot], fill=(190, 176, 146))
+    # semicolonne (metà a sinistra e metà a destra della cella)
+    for x0, x1 in ((0, 12), (W - 12, W)):
+        d.rectangle([x0, top - 2, x1, bot], fill=(222, 208, 178))
+        sh = (x0 == 0); d.rectangle([x1 - 4 if sh else x0, top - 2, x1 if sh else x0 + 4, bot], fill=(176, 160, 128))
+        cap = [(top - 2, top + 6)]
+        col = (232, 220, 192) if order < 2 else (238, 226, 196)
+        d.rectangle([x0, top - 2, x1, top + 6], fill=col)
+        if order == 1:
+            for vx in ((x1 - 3) if x0 == 0 else (x0 + 3),): d.ellipse([vx - 3, top - 1, vx + 3, top + 5], outline=(150, 134, 104), width=2)
+        if order == 2:
+            for yy in (top + 2, top + 7): d.line([(x0, yy), (x1, yy)], fill=(160, 150, 110), width=2)
+    return img2a(im)
+
+def m_attic(seed, window=True):
+    a = m_ashlar(TRAV, seed, 32, 16, (170, 154, 124)); im = Image.fromarray(clip(a)); d = ImageDraw.Draw(im)
+    d.rectangle([0, 0, CELL, 14], fill=(214, 200, 170)); d.rectangle([0, 14, CELL, 18], fill=(150, 134, 104))
+    for x in range(8, CELL, 22): d.rectangle([x, 18, x + 6, 26], fill=(176, 160, 128))   # mensole per le antenne del velario
+    for x0, x1 in ((0, 8), (CELL - 8, CELL)): d.rectangle([x0, 18, x1, CELL - 10], fill=(222, 208, 178))
+    if window: d.rectangle([52, 56, 76, 82], fill=(44, 34, 26)); d.rectangle([48, 52, 80, 56], fill=(176, 160, 128))
+    d.rectangle([0, CELL - 10, CELL, CELL], fill=(190, 174, 142))
+    return img2a(im)
+
+def m_sand(seed):
+    n = tnoise(CELL, 6, seed); n2 = tnoise(CELL, 32, seed + 1, 2); y, x = np.mgrid[0:CELL, 0:CELL]
+    a = shade(col((188, 160, 112)), 0.86 + 0.2 * n + 0.08 * n2)
+    return a
+
+def m_seats(seed):
+    """gradoni visti dall'alto: lastre di travertino con giunti"""
+    return m_ashlar((198, 186, 160), seed, 64, 128, (150, 138, 116))
+
 MATS = {}
 def defmat(name, arr, rep=(1.0, 1.0), once=False):
     MATS[name] = dict(i=len(MATS), arr=arr, rep=rep, once=once)
@@ -260,6 +308,14 @@ def build_materials():
     defmat('ochre_d', m_plaster((176, 120, 64), 45), (1.2, 1.2))
     defmat('green', m_solid((70, 104, 46), 46, 0.2), (1, 1))
     defmat('hedge', m_grass(47) * 0.8, (0.8, 0.8))
+    defmat('arc1', m_arcade(48, 0), once=True)
+    defmat('arc2', m_arcade(49, 1, True), once=True)
+    defmat('arc3', m_arcade(50, 2, True), once=True)
+    defmat('attic_w', m_attic(51, True), once=True)
+    defmat('attic_p', m_attic(52, False), once=True)
+    defmat('sand', m_sand(53), (1.5, 1.5))
+    defmat('seats', m_seats(54), (0.6, 0.6))
+    defmat('trav', m_ashlar((204, 188, 156), 55, 32, 16, (170, 154, 124)), (0.7, 0.7))
 
 def atlas():
     a = np.zeros((ATL, ATL, 3))

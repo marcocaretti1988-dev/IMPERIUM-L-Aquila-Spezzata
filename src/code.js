@@ -839,6 +839,7 @@ function makeNoise(seed) {
 const chaikin = (l, it = 2) => { let p = l; for (let k = 0; k < it; k++) { if (p.length < 3) return p; const o = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const [ax, ay] = p[i], [bx, by] = p[i + 1]; o.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]); } o.push(p[p.length - 1]); p = o; } return p; };
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 // maschere del terreno (M px per casella)
+const CAMP_R = 15.5; // mezzo lato del piazzale dell'accampamento (caselle)
 function groundMasks(enemy, decals, seed) {
   const N = NMAP, M = 4, S = N * M, mid = N / 2;
   const nz = [makeNoise(seed * 7 + 1), makeNoise(seed * 7 + 2), makeNoise(seed * 7 + 3), makeNoise(seed * 7 + 4), makeNoise(seed * 7 + 5)];
@@ -882,15 +883,21 @@ function groundMasks(enemy, decals, seed) {
     const r0 = enemy ? 10.5 : 4.2; dirt = smooth(r0 + 1.6, r0 - 1.6, dc + (n2 - 0.5) * (enemy ? 7 : 2.4) + (n0 - 0.5) * (enemy ? 9 : 3)) * (enemy ? 1 : 0.75);
     if (segs.length) { const sd = segD(x, y); dirt = Math.max(dirt, smooth(0.95, 0.25, sd + (n2 - 0.5) * 0.5) * (enemy ? 0.85 : 0.6)); }
     if (enemy) dirt = Math.max(dirt, smooth(0.8, 0.88, n4 * 0.6 + n0 * 0.5) * 0.5);
-    dirt *= smooth(0.2, 1.2, wd);
+    // accampamento romano: grande piazzale rettangolare di terra calpestata, con fossa e terrapieno lungo il bordo
+    let camp = 0, ditch = 0, bank = 0;
+    if (!enemy) { const ch = Math.max(Math.abs(x - mid), Math.abs(y - mid)) + (n2 - 0.5) * 1.2 + (n0 - 0.5) * 1.6;
+      camp = smooth(CAMP_R + 0.8, CAMP_R - 1.2, ch) * (0.72 + 0.28 * smooth(0.3, 0.7, n1)); dirt = Math.max(dirt, camp);
+      const cr = Math.max(Math.abs(x - mid), Math.abs(y - mid)) + (n2 - 0.5) * 0.35; ditch = smooth(0.75, 0.15, Math.abs(cr - CAMP_R - 1.4)); bank = smooth(0.7, 0.1, Math.abs(cr - CAMP_R - 0.4)); dry *= smooth(CAMP_R + 3, CAMP_R + 6, ch); }
+    dirt *= smooth(0.2, 1.2, wd); ditch *= smooth(0.5, 1.5, wd); bank *= smooth(0.5, 1.5, wd);
+    D.dry.data[o] = 255 * dry;
     D.dirt.data[o] = 255 * Math.min(1, dirt);
     // fango lungo le rive e qualche pozzanghera nei prati
     let mud = smooth(2.6, 0.9, wd + (n2 - 0.5) * 1.6) * smooth(0.15, 0.7, wd);
     mud *= 0.7; if (enemy) mud = Math.max(mud, smooth(0.86, 0.93, n2 * 0.7 + n1 * 0.45) * 0.6 * smooth(8, 12, dc));
     D.mud.data[o] = 255 * Math.min(1, mud);
     // luce/ombra: nuvole dipinte e bordo scuro della foresta
-    D.dark.data[o] = 255 * Math.min(1, smooth(0.5, 0.85, n3) * 0.22 + smooth(9, 0, edge) * 0.7);
-    D.light.data[o] = 255 * smooth(0.55, 0.85, 1 - n3) * 0.6;
+    D.dark.data[o] = 255 * Math.min(1, smooth(0.5, 0.85, n3) * 0.22 + smooth(9, 0, edge) * 0.7 + ditch * 0.75);
+    D.light.data[o] = 255 * Math.min(1, smooth(0.55, 0.85, 1 - n3) * 0.6 + bank * 0.9);
   }
   for (const k in L) L[k].getContext('2d').putImageData(D[k], 0, 0);
   return { L, M };
@@ -1929,7 +1936,7 @@ function drawBuilding(c, sc, b) {
       const tf = b.fired != null ? sc.time - b.fired : 99; if (tf < 0.35 && G3.models.balista_c && G3.models.balista_c.ready) k3 = 'balista_c'; else if (tf < 1.4 && G3.models.balista_b && G3.models.balista_b.ready) k3 = 'balista_b'; }
     if (b.t === 'cancello' && M3D_FILES.has('cancello_aperto')) { need3d('cancello_aperto'); const om = G3.models.cancello_aperto; if (om && om.ready && sc.U.some(u => !u.dead && u.side === b.side && Math.hypot(u.x - (b.x + 1), u.y - (b.y + 1)) < 2.2)) k3 = 'cancello_aperto'; }
     const dfit = DFIT[b.t] && G3.models[k3] && G3.models[k3].m; if (dfit) { const mm = G3.models[k3].m, hz = Math.max(mm.size[0], mm.size[2]); fitm = DFIT[b.t].h ? DFIT[b.t].h * hz / Math.max(1e-6, mm.size[1]) / (b.w * 1.3) : DFIT[b.t].w / (b.w * 1.3); yaw = ((b.ref && b.ref.rot) || 0) * Math.PI / 2 + (DYAW_RND[b.t] ? ((b.id * 2654435761) >>> 0) % 628 / 100 : 0); }
-    let fit3 = fitm * b.w * 1.3 * (b.t === 'mastio' ? (b.lvl <= 8 ? 1.25 + 0.03 * b.lvl : 1.49 + 0.014 * (b.lvl - 8)) : b.t === 'caserma' ? 0.82 : b.t === 'falo' ? 0.8 : b.t === 'tronco' ? 0.55 : 1);
+    let fit3 = fitm * b.w * 1.3 * (b.t === 'mastio' ? (b.lvl <= 8 ? 1.25 + 0.03 * b.lvl : 1.49 + 0.014 * (b.lvl - 8)) : b.t === 'caserma' ? 0.82 : b.t === 'anfiteatro' ? 1.16 : b.t === 'falo' ? 0.8 : b.t === 'tronco' ? 0.55 : 1);
     // nessun edificio deve superare in altezza il Mastio: tetto all'altezza in base all'impronta
     if (b.t !== 'mastio' && !H3FREE[b.t] && b.w >= 2) { const mm = G3.models[k3].m, hNow = mm.size[1] * fit3 / Math.max(mm.size[0], mm.size[2]), hMax = 0.75 * b.w + 0.3; if (hNow > hMax) fit3 *= hMax / hNow; }
     const dark = (b.t === 'casa' || b.t === 'taverna') && sc.mode === 'village' && famine(); if (dark) c.filter = 'brightness(0.6) saturate(0.5)';
@@ -1988,7 +1995,12 @@ function drawHero3D(c, sc, u, wx, wy) {
 }
 const HPORT = {};
 function heroPortrait(k) { if (HPORT[k]) return HPORT[k]; need3d(k); const sp = G3.models[k] && G3.models[k].ready ? g3sprite(k, 140, 0.5, 0) : null; if (!sp) return ''; const cv2 = document.createElement('canvas'); cv2.width = 120; cv2.height = 148; const s = Math.min(140 / sp.h, 116 / sp.w); cv2.getContext('2d').drawImage(sp.cv, (120 - sp.w * s) / 2, 148 - sp.h * s, sp.w * s, sp.h * s); return HPORT[k] = cv2.toDataURL(); }
-function drawUnit(c, sc, u) { drawUnit0(c, sc, u); if (u.vis) drawVisitorMark(c, sc, u); }
+// i personaggi di FEUDUM restano nascosti nel villaggio finché non arrivano gli sprite romani:
+// si vedono solo quelli con un modello 3D romano (es. il Centurione). La logica (lavoro, caccia, visite) continua uguale.
+const HIDE_FOLK = true;
+const ROMAN3D = new Set(['templare']); // personaggi con modello 3D romano: si vedono sempre
+const folkHidden = (sc, u) => HIDE_FOLK && sc && sc.mode === 'village' && !ROMAN3D.has(u.k);
+function drawUnit(c, sc, u) { if (folkHidden(sc, u)) { if (u.vis && u.visLead) drawVisitorMark(c, sc, u); return; } drawUnit0(c, sc, u); if (u.vis) drawVisitorMark(c, sc, u); }
 function drawUnit0(c, sc, u) {
   const [wx, wy] = W(u.x, u.y); if (u.k === 'carro') { if (!u.dead) drawCart(c, u, wx, wy); return; }
   if (u.climb) drawLadder(c, u);
@@ -2648,7 +2660,7 @@ function trainCost(rec) { const l = rec.lvl; if (HDEF[rec.k]) return { cibo: 40 
 // selezione sulla mappa
 function pickFolk(sx, sy, tx, ty) {
   if (!SC || MODE !== 'village') return null; const wx = (sx - VW / 2) / cam.z + cam.x, wy = (sy - VH / 2) / cam.z + cam.y; let best = null, bd = 1e9;
-  for (const u of SC.U) { if (u.dead || u.side !== 'V' || u.k === 'carro' || u.kid || u.vis || u.hunter) continue; const [bx, by] = W(u.x, u.y); const tall = u.d && u.d.model ? 34 : 26; const dx = wx - bx, dy = wy - (by - (tall === 34 ? 28 : 20)); if (Math.abs(dx) < 16 && Math.abs(dy) < tall) { const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = u; } } }
+  for (const u of SC.U) { if (u.dead || u.side !== 'V' || u.k === 'carro' || u.kid || u.vis || u.hunter || folkHidden(SC, u)) continue; const [bx, by] = W(u.x, u.y); const tall = u.d && u.d.model ? 34 : 26; const dx = wx - bx, dy = wy - (by - (tall === 34 ? 28 : 20)); if (Math.abs(dx) < 16 && Math.abs(dy) < tall) { const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = u; } } }
   return best;
 }
 function folkOf(u) {
