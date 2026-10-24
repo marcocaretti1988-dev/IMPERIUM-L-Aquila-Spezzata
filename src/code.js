@@ -1293,25 +1293,28 @@ let ATL_OK = false; ATL.onload = () => ATL_OK = true;
 const RATL = new Image(); let RATL_OK = false; RATL.onload = () => { RATL_OK = true; };
 // direzione a 4 vie dall'ultimo movimento: F verso chi guarda, B di spalle, S di lato (verso destra; a sinistra si specchia)
 function romanDir(u) { const sx = u.fsx, sy = u.fsy; if (sx == null) return u.face === 'B' ? 'B' : 'F'; return Math.abs(sx) > Math.abs(sy) * 0.85 ? 'S' : (sy > 0 ? 'F' : 'B'); }
-function romanFrame(u) {
-  const A = RFR[RUNIT[u.k]]; const pick = (k, i) => { const l = A[k]; return l ? l[Math.max(0, Math.min(l.length - 1, i))] : null; };
+// nemici (difensori quando attacchi, predoni nelle razzie): fanteria barbara; i tuoi soldati: legionari
+const isFoe = (sc, u) => sc && ((sc.mode === 'raid' && u.side === 'A') || (sc.mode !== 'raid' && u.side === 'D'));
+function romanSkin(sc, u) { return isFoe(sc, u) ? RFOE[u.k] : RUNIT[u.k]; }
+function romanFrame(u, sk) {
+  const A = RFR[sk]; const pick = (k, i) => { const l = A[k]; return l ? l[Math.max(0, Math.min(l.length - 1, i))] : null; };
   if (u.dead) { const seq = [...(A.hit || []).slice(1), ...(A.death || [])]; return seq[Math.min(seq.length - 1, Math.floor((u.deadT || 0) / 0.11))]; }
   const dir = romanDir(u);
   if (u.atkT > 0) { const p = Math.min(0.999, 1 - u.atkT / 0.32);
-    if (dir === 'F' && A.atkF) { const seq = [pick('idleF', 0), A.atkF[0], A.atkF[1]]; return seq[Math.floor(p * 3)]; }
+    if (dir === 'F' && A.atkF) { const seq = [pick('idleF', 0), ...A.atkF]; return seq[Math.floor(p * seq.length)]; }
     return pick('atkS', Math.floor(p * A.atkS.length)); }
-  if (u.moving) { const k = 'walk' + dir; return pick(A[k] ? k : 'walkS', Math.floor(u.phase * 2.6) % 6); }
+  if (u.moving) { const k = A['walk' + dir] ? 'walk' + dir : 'walkS'; return pick(k, Math.floor(u.phase * 2.6) % A[k].length); }
   const slow = Math.floor(u.phase * 0.7) % 2; return dir === 'B' ? pick('idleB', 0) : dir === 'S' ? pick('idleS', slow) : pick('idleF', slow);
 }
 function drawRoman(c, sc, u, wx, wy) {
-  const f = romanFrame(u); if (!f) return false; let a = 1;
+  const sk = romanSkin(sc, u); const f = romanFrame(u, sk); if (!f) return false; let a = 1;
   if (u.dead) { a = Math.max(0, 1 - Math.max(0, u.deadT - 5) / 3); if (a <= 0) return true; } else u.phase += (u.moving ? 1 : 0.15) * (1 / 60) * 4;
   if (!u.dead) {
     const ring = u.side === 'A' ? (sc.mode === 'raid' ? 'rgba(200,50,40,0.55)' : 'rgba(70,120,230,0.55)') : u.side === 'D' ? (sc.mode === 'raid' ? 'rgba(70,120,230,0.55)' : 'rgba(200,50,40,0.55)') : null;
     c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(wx, wy, 9, 4.5, 0, 0, 7); c.fill();
     if (ring) { c.strokeStyle = ring; c.lineWidth = 1.6; c.beginPath(); c.ellipse(wx, wy, 10, 5, 0, 0, 7); c.stroke(); }
     if (u.hero) { c.strokeStyle = 'rgba(255,215,100,0.8)'; c.lineWidth = 2; c.beginPath(); c.ellipse(wx, wy, 13, 6.5, 0, 0, 7); c.stroke(); } }
-  const s = (u.k === 'uomoarme' ? 0.37 : 0.33) * (u.kid ? 0.66 : 1); const [sx, sy, w, h] = f; const flip = u.fsx != null ? u.fsx < 0 : u.flip;
+  const s = (u.k === 'uomoarme' && sk === 'legionario' ? 0.37 : 0.33) * (u.kid ? 0.66 : 1); const [sx, sy, w, h] = f; const flip = u.fsx != null ? u.fsx < 0 : u.flip;
   if (u.hitT > 0) c.filter = 'brightness(1.6)'; if (a < 1) c.globalAlpha = a;
   const pix = c.imageSmoothingEnabled; c.imageSmoothingEnabled = cam.z * DPR * s < 0.9; // pixel art: nitido quando è ingrandito
   if (flip) { c.save(); c.translate(wx, wy + 1); c.scale(-1, 1); c.drawImage(RATL, sx, sy, w, h, -w * s / 2, -h * s, w * s, h * s); c.restore(); }
@@ -2046,7 +2049,7 @@ function drawUnit0(c, sc, u) {
     if (sc.night && !u.dead) { c.shadowColor = 'rgba(255,200,60,0.9)'; c.shadowBlur = 6; }
     c.drawImage(BATL, f[0], f[1], f[2], f[3], -w / 2, -h + 2, w, h); c.restore(); c.filter = 'none'; c.globalAlpha = 1; return; }
   if (u.d.model && drawHero3D(c, sc, u, wx, wy)) return;
-  if (RUNIT[u.k] && RATL_OK && drawRoman(c, sc, u, wx, wy)) return;
+  if (RATL_OK && romanSkin(sc, u) && drawRoman(c, sc, u, wx, wy)) return;
   if (u.dead) { const a = Math.max(0, 1 - Math.max(0, u.deadT - 5) / 3); if (a <= 0) return; sprDraw(c, u.k + '.death', wx, wy + 4, uScale(u) * 0.95, u.flip, a * 0.95); return; }
   u.phase += (u.moving ? 1 : 0.15) * (1 / 60) * 4;
   const ring = u.side === 'A' ? (sc.mode === 'raid' ? 'rgba(200,50,40,0.55)' : 'rgba(70,120,230,0.55)') : u.side === 'D' ? (sc.mode === 'raid' ? 'rgba(70,120,230,0.55)' : 'rgba(200,50,40,0.55)') : null;

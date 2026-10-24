@@ -30,14 +30,31 @@ SHEETS = {
             ['walkB'] * 6,
         ]),
     ],
+    # barbaro (nemici)
+    'barbaro': [
+        ('barbaro_a.jpg', [
+            ['atkS', 'atkS', 'atkS', 'atkS', 'atkS', 'idleS'],
+            ['atkF', 'atkF', 'atkF', 'atkF', 'atkF', 'idleF'],
+            ['hit', 'death', 'death', 'death', 'death', 'death'],
+            ['idleB', None, None, None, None, None],
+        ]),
+        ('barbaro_b.jpg', [
+            ['walkF'] * 6,
+            [None] * 6,
+            ['walkS?'] * 6,       # di lato: alcune figure guardano a sinistra -> vengono girate verso destra da sole
+            ['walkB'] * 6,
+        ]),
+    ],
 }
 # figure che si toccano nel foglio: funzione (x, y) -> True se il pixel appartiene alla figura di sinistra
 SPLITS = {
     # riga 1 del primo foglio: la punta del gladio del colpo affondato tocca il mantello del fotogramma dopo
-    ('legionario_a.jpg', 0): lambda x, y: (x < 1385) | ((x < 1508) & (y < 232 + (x - 1385) * (186 - 232) / (1505 - 1385))),
+    ('legionario_a.jpg', 0): lambda x, y: (x < 1385) | ((x < 1501) & (y < 234 + (x - 1385) * (189 - 234) / (1500 - 1385))),
 }
 # unità del gioco che usano questi sprite (chiave interna -> personaggio)
 UNITS = {'miliziano': 'legionario', 'uomoarme': 'legionario'}
+# fanteria nemica (difensori dei villaggi e predoni delle razzie)
+FOES = {'miliziano': 'barbaro', 'scudata': 'barbaro', 'picchiere': 'barbaro', 'uomoarme': 'barbaro'}
 
 def cutout(path):
     im = np.asarray(Image.open(path).convert('RGB')).astype(np.int32); H, W, _ = im.shape
@@ -58,6 +75,11 @@ def cutout(path):
             yy, xx = y + dy, x + dx
             if 0 <= yy < H and 0 <= xx < W and near[yy, xx] and not bgm[yy, xx]: bgm[yy, xx] = True; q.append((yy, xx))
     fg = ~bgm
+    # buchi di sfondo chiusi dentro la figura (es. tra lancia e braccio): colore quasi identico allo sfondo e area non minuscola
+    hole = (d < 16) & fg; hl, hc = components(hole, 60)
+    for c in hc:
+        reg = hl == c['id']
+        if np.median(d[reg]) < 10: fg &= ~reg
     # alone chiaro della compressione JPEG attorno al contorno: via i pixel di bordo quasi uguali allo sfondo
     edge = fg & (np.roll(bgm, 1, 0) | np.roll(bgm, -1, 0) | np.roll(bgm, 1, 1) | np.roll(bgm, -1, 1)) & (d < 70)
     fg &= ~edge
@@ -78,6 +100,13 @@ def components(fg, min_area=600):
         if len(pts) >= min_area:
             p = np.array(pts); comps.append(dict(id=n, n=len(p), y0=p[:, 0].min(), y1=p[:, 0].max(), x0=p[:, 1].min(), x1=p[:, 1].max(), cy=p[:, 0].mean(), cx=p[:, 1].mean()))
     return lab, comps
+
+def facing(rgba):
+    """+1 se la figura di profilo guarda a destra, -1 a sinistra: nella fascia della testa la pelle sta dal lato del viso"""
+    h = rgba.shape[0]; band = rgba[int(h * 0.04):int(h * 0.24)].astype(int); a = band[..., 3] > 0
+    r, g, b = band[..., 0], band[..., 1], band[..., 2]; skin = a & (r > 150) & (r - b > 45) & (r > g)
+    xs = np.nonzero(a)[1]; sx = np.nonzero(skin)[1]
+    return 1 if len(sx) and sx.mean() > xs.mean() else -1
 
 def frames_of(path, rows):
     im, fg = cutout(path); H, W = fg.shape; lab, comps = components(fg)
@@ -116,7 +145,7 @@ def frames_of(path, rows):
             # via i frammenti minuscoli rimasti dai tagli
             ys, xs = np.nonzero(m); sub = m[ys.min():ys.max() + 1, xs.min():xs.max() + 1]; sl, sc_ = components(sub, 1)
             for c2 in sc_:
-                if c2['n'] < 250: sub[sl == c2['id']] = False
+                if c2['n'] < 700: sub[sl == c2['id']] = False
             ys, xs = np.nonzero(m)
             y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
             rgba = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
@@ -124,7 +153,10 @@ def frames_of(path, rows):
             # punto d'appoggio: centro dei piedi (pixel del 12% più basso della figura), fondo = pixel più basso
             h = y1 - y0 + 1; low = m[y1 - int(h * 0.12):y1 + 1, x0:x1 + 1]; fx = np.nonzero(low)[1]
             ax = int(np.median(fx)) if len(fx) else (x1 - x0) // 2
-            out.append(dict(name=name, img=rgba, ax=ax))
+            if name.endswith('?'):
+                name = name[:-1]
+                if facing(rgba) < 0: rgba = rgba[:, ::-1].copy(); ax = rgba.shape[1] - 1 - ax
+            for nm in name.split('+'): out.append(dict(name=nm, img=rgba, ax=ax))
     return out
 
 def build():
@@ -163,7 +195,7 @@ def main():
     b = io.BytesIO(); atlas.save(b, 'WEBP', lossless=True, method=6)
     src = 'data:image/webp;base64,' + base64.b64encode(b.getvalue()).decode()
     js = ('// generato da src/tools/sprites.py: sprite romani (personaggi e animazioni)\n'
-          f'const RATLAS_SRC = "{src}";\nconst RFR = {json.dumps(RFR)};\nconst RUNIT = {json.dumps(UNITS)};\n')
+          f'const RATLAS_SRC = "{src}";\nconst RFR = {json.dumps(RFR)};\nconst RUNIT = {json.dumps(UNITS)};\nconst RFOE = {json.dumps(FOES)};\n')
     open(os.path.join(REPO, 'src', 'data_roman.js'), 'w').write(js)
     print('atlante', atlas.size, len(b.getvalue()) // 1024, 'KB;', {ch: {k: len(v) for k, v in a.items()} for ch, a in RFR.items()})
     if '--preview' in sys.argv:
